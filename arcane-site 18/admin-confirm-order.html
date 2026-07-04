@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcane — Confirm Order (Owner Only)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0a0a0b; --ink-2:#131315; --bone:#ece7dc; --bone-dim:#c9c3b6;
+    --smoke:#8d887e; --blood:#c11f2b; --line:rgba(236,231,220,0.12);
+    --radius:20px; --ease:cubic-bezier(.16,.84,.44,1);
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:var(--ink); color:var(--bone); font-family:'Archivo', sans-serif;
+    min-height:100vh; display:flex; justify-content:center; padding:60px 20px;
+  }
+  .panel{width:100%; max-width:560px;}
+  .tag{
+    font-family:'Space Mono'; font-size:11px; letter-spacing:0.15em; text-transform:uppercase;
+    color:var(--blood); display:flex; align-items:center; gap:10px; margin-bottom:14px;
+  }
+  .tag::before{content:''; width:22px; height:1px; background:var(--blood);}
+  h1{font-family:'Anton'; font-size:34px; text-transform:uppercase; margin-bottom:8px;}
+  .sub{color:var(--smoke); font-size:14px; margin-bottom:36px; line-height:1.6;}
+
+  .field{margin-bottom:18px;}
+  label{
+    display:flex; flex-direction:column; gap:8px;
+    font-family:'Space Mono'; font-size:11px; letter-spacing:0.06em; text-transform:uppercase; color:var(--bone-dim);
+  }
+  input, textarea{
+    background:var(--ink-2); border:1px solid var(--line); border-radius:12px;
+    padding:13px 16px; color:var(--bone); font-family:'Archivo'; font-size:14px;
+    transition:border-color .25s var(--ease);
+  }
+  textarea{resize:vertical; min-height:90px; font-family:'Archivo';}
+  input:focus, textarea:focus{outline:none; border-color:var(--blood);}
+
+  .actions{display:flex; gap:12px; margin-top:28px; flex-wrap:wrap;}
+  button{
+    font-family:inherit; cursor:pointer; border:none; padding:15px 26px; border-radius:999px;
+    font-size:13px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase;
+    transition:transform .3s var(--ease), background .3s var(--ease);
+  }
+  .btn-primary{background:var(--blood); color:var(--bone);}
+  .btn-primary:hover{transform:translateY(-2px);}
+  .btn-ghost{background:transparent; border:1px solid var(--line); color:var(--bone);}
+  .btn-ghost:hover{border-color:var(--blood); color:var(--blood);}
+
+  .preview{
+    margin-top:32px; background:var(--ink-2); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; font-family:'Space Mono'; font-size:12.5px; line-height:1.8; color:var(--bone-dim);
+    white-space:pre-wrap;
+  }
+  .preview b{color:var(--bone);}
+  .status{margin-top:14px; font-family:'Space Mono'; font-size:11px; color:#3fbd73; display:none;}
+  .status.show{display:block;}
+</style>
+</head>
+<body>
+<div class="panel">
+  <span class="tag">Owner Tool — Not Linked From The Site</span>
+  <h1>Confirm an Order</h1>
+  <p class="sub">Once you've checked Cash App and matched a payment to an order, fill this in to generate a ready-to-send confirmation email — one click opens it in your email app, already written.</p>
+
+  <div class="field">
+    <label>Customer name
+      <input id="custName" type="text" placeholder="">
+    </label>
+  </div>
+  <div class="field">
+    <label>Customer email
+      <input id="custEmail" type="email" placeholder="">
+    </label>
+  </div>
+  <div class="field">
+    <label>Order code <span style="text-transform:none; color:var(--smoke);">(from their email, e.g. ARC-4821)</span>
+      <input id="orderCode" type="text" placeholder="">
+    </label>
+  </div>
+  <div class="field">
+    <label>Tracking number / link <span style="text-transform:none; color:var(--smoke);">(optional — leave blank if not shipped yet)</span>
+      <input id="trackingInfo" type="text" placeholder="">
+    </label>
+  </div>
+  <div class="field">
+    <label>Anything else to add? <span style="text-transform:none; color:var(--smoke);">(optional)</span>
+      <textarea id="extraNote" placeholder=""></textarea>
+    </label>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="openEmailBtn">Open confirmation email</button>
+    <button class="btn-ghost" id="copyBtn">Copy message</button>
+  </div>
+  <div class="status" id="statusMsg">✓ Copied to clipboard</div>
+
+  <div class="preview" id="previewBox">Fill in the fields above to preview the email.</div>
+</div>
+
+<script>
+  const custName = document.getElementById('custName');
+  const custEmail = document.getElementById('custEmail');
+  const orderCode = document.getElementById('orderCode');
+  const trackingInfo = document.getElementById('trackingInfo');
+  const extraNote = document.getElementById('extraNote');
+  const previewBox = document.getElementById('previewBox');
+  const statusMsg = document.getElementById('statusMsg');
+
+  function buildMessage(){
+    const name = custName.value.trim() || 'there';
+    const code = orderCode.value.trim() || '(order code)';
+    const tracking = trackingInfo.value.trim();
+    const extra = extraNote.value.trim();
+
+    let lines = [
+      `Hey ${name},`,
+      '',
+      `Good news — we've confirmed your payment and order ${code} is officially locked in.`,
+      '',
+      "We're packing it up now. It'll ship within 2-3 business days."
+    ];
+
+    if(tracking){
+      lines.push('', `Tracking: ${tracking}`);
+    } else {
+      lines.push('', "You'll get a tracking number at this email as soon as it's on its way.");
+    }
+
+    if(extra){
+      lines.push('', extra);
+    }
+
+    lines.push('', 'Thanks for rocking Arcane.', '', '— Arcane Studio');
+
+    return lines.join('\n');
+  }
+
+  function updatePreview(){
+    previewBox.innerHTML = buildMessage()
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/^Hey (.+),$/m, '<b>Hey $1,</b>');
+  }
+
+  [custName, custEmail, orderCode, trackingInfo, extraNote].forEach(el => {
+    el.addEventListener('input', updatePreview);
+  });
+  updatePreview();
+
+  document.getElementById('openEmailBtn').addEventListener('click', () => {
+    const to = custEmail.value.trim();
+    if(!to){ custEmail.focus(); return; }
+    const subject = encodeURIComponent(`Your Arcane order ${orderCode.value.trim() || ''} is confirmed`);
+    const body = encodeURIComponent(buildMessage());
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  });
+
+  document.getElementById('copyBtn').addEventListener('click', () => {
+    const msg = buildMessage();
+    if(navigator.clipboard){
+      navigator.clipboard.writeText(msg).then(() => {
+        statusMsg.classList.add('show');
+        setTimeout(() => statusMsg.classList.remove('show'), 2000);
+      });
+    }
+  });
+</script>
+</body>
+</html>
